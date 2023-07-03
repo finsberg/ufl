@@ -13,6 +13,7 @@
 import io
 import os
 import re
+import ufl_legacy
 from ufl_legacy.log import error, warning
 from ufl_legacy.utils.sorting import sorted_by_key
 from ufl_legacy.form import Form
@@ -34,8 +35,16 @@ class FileData(object):
         self.reserved_objects = {}
 
     def __bool__(self):
-        return bool(self.elements or self.coefficients or self.forms or self.expressions or
-                    self.object_names or self.object_by_name or self.reserved_objects)
+        return bool(
+            self.elements
+            or self.coefficients
+            or self.forms
+            or self.expressions
+            or self.object_names
+            or self.object_by_name
+            or self.reserved_objects
+        )
+
     __nonzero__ = __bool__
 
 
@@ -53,9 +62,9 @@ def read_lines_decoded(fn):
     for i in range(min(2, len(lines))):
         m = match(lines[i])
         if m:
-            encoding, = m.groups()
+            (encoding,) = m.groups()
             # Drop encoding line
-            lines = lines[:i] + lines[i + 1:]
+            lines = lines[:i] + lines[i + 1 :]
             break
     else:
         # Default to utf-8 (works for ascii files
@@ -78,8 +87,9 @@ def read_ufl_file(filename):
 
 def execute_ufl_code(uflcode):
     # Execute code
-    namespace = {}
+    namespace = ufl_legacy.__dict__
     exec(uflcode, namespace)
+
     return namespace
 
 
@@ -101,7 +111,9 @@ def interpret_ufl_namespace(namespace):
             # FIXME: Remove after FFC is updated to use reserved_objects:
             ufd.object_names[name] = value
             ufd.object_by_name[name] = value
-        elif isinstance(value, (FiniteElementBase, Coefficient, Constant, Argument, Form, Expr)):
+        elif isinstance(
+            value, (FiniteElementBase, Coefficient, Constant, Argument, Form, Expr)
+        ):
             # Store instance <-> name mappings for important objects
             # without a reserved name
             ufd.object_names[id(value)] = name
@@ -115,6 +127,7 @@ def interpret_ufl_namespace(namespace):
         def get_form(name):
             form = ufd.object_by_name.get(name)
             return form if isinstance(form, Form) else None
+
         a_form = get_form("a")
         L_form = get_form("L")
         M_form = get_form("M")
@@ -143,7 +156,9 @@ def interpret_ufl_namespace(namespace):
 
     # Validate types
     if not isinstance(ufd.elements, (list, tuple)):
-        error("Expecting 'elements' to be a list or tuple, not '%s'." % type(ufd.elements))
+        error(
+            "Expecting 'elements' to be a list or tuple, not '%s'." % type(ufd.elements)
+        )
     if not all(isinstance(e, FiniteElementBase) for e in ufd.elements):
         error("Expecting 'elements' to be a list of FiniteElementBase instances.")
 
@@ -152,12 +167,17 @@ def interpret_ufl_namespace(namespace):
     # but allow 'functions' for compatibility
     functions = namespace.get("functions", [])
     if functions:
-        warning("Deprecation warning: Rename 'functions' to 'coefficients' to export coefficients.")
+        warning(
+            "Deprecation warning: Rename 'functions' to 'coefficients' to export coefficients."
+        )
     ufd.coefficients = namespace.get("coefficients", functions)
 
     # Validate types
     if not isinstance(ufd.coefficients, (list, tuple)):
-        error("Expecting 'coefficients' to be a list or tuple, not '%s'." % type(ufd.coefficients))
+        error(
+            "Expecting 'coefficients' to be a list or tuple, not '%s'."
+            % type(ufd.coefficients)
+        )
     if not all(isinstance(e, Coefficient) for e in ufd.coefficients):
         error("Expecting 'coefficients' to be a list of Coefficient instances.")
 
@@ -166,7 +186,10 @@ def interpret_ufl_namespace(namespace):
 
     # Validate types
     if not isinstance(ufd.expressions, (list, tuple)):
-        error("Expecting 'expressions' to be a list or tuple, not '%s'." % type(ufd.expressions))
+        error(
+            "Expecting 'expressions' to be a list or tuple, not '%s'."
+            % type(ufd.expressions)
+        )
     if not all(isinstance(e[0], Expr) for e in ufd.expressions):
         error("Expecting 'expressions' to be a list of Expr instances.")
 
